@@ -3,13 +3,32 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { applicationStorage } from '../lib/storage';
+import { applicationService, type ApplicationFormData } from '../lib/api';
 import toast from 'react-hot-toast';
-import { User, Mail, GraduationCap, Target, Briefcase, ArrowRight, Upload, FileText } from 'lucide-react';
+import { 
+  User, 
+  Mail, 
+  Phone,
+  MapPin,
+  GraduationCap, 
+  Target, 
+  Briefcase, 
+  ArrowRight, 
+  Upload, 
+  FileText, 
+  Eye, 
+  X, 
+  CheckCircle, 
+  AlertCircle,
+  Download,
+  RefreshCw
+} from 'lucide-react';
 
 const applicationSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
+  phone: z.string().min(10, 'Please enter a valid phone number').max(15, 'Phone number is too long'),
+  location: z.string().min(2, 'Please enter your location/city'),
   college: z.string().min(2, 'College name is required'),
   specialization: z.string().min(1, 'Please select a specialization'),
   graduation_year: z.string().min(4, 'Graduation year is required'),
@@ -18,18 +37,25 @@ const applicationSchema = z.object({
   experience: z.string().min(20, 'Please describe your experience (at least 20 characters)'),
 });
 
-type ApplicationFormData = z.infer<typeof applicationSchema>;
+type FormData = z.infer<typeof applicationSchema>;
 
 export function ApplicationForm() {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [resumeFile, setResumeFile] = React.useState<File | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [uploadProgress, setUploadProgress] = React.useState(0);
+  const [showPreview, setShowPreview] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch
-  } = useForm<ApplicationFormData>({
+  } = useForm<FormData>({
     resolver: zodResolver(applicationSchema)
   });
 
@@ -48,18 +74,153 @@ export function ApplicationForm() {
     'International Business'
   ];
 
-  const onSubmit = async (data: ApplicationFormData) => {
+  // File validation function
+  const validateFile = (file: File): string | null => {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedExtensions = ['.pdf', '.doc', '.docx'];
+    
+    if (file.size > maxSize) {
+      return 'File size must be less than 10MB';
+    }
+    
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
+      return 'Please upload a PDF, DOC, or DOCX file';
+    }
+    
+    return null;
+  };
+
+  // Simulate upload progress animation
+  const simulateUpload = () => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsUploading(false);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 100);
+  };
+
+  // Handle file upload
+  const handleFileUpload = (file: File) => {
+    const error = validateFile(file);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    setResumeFile(file);
+    simulateUpload();
+    
+    // Create preview URL for PDF files
+    if (file.type === 'application/pdf') {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+    
+    toast.success(`Resume "${file.name}" uploaded successfully!`);
+  };
+
+  // Handle file removal
+  const handleFileRemove = () => {
+    setResumeFile(null);
+    setUploadProgress(0);
+    setIsUploading(false);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    setShowPreview(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    toast.success('File removed successfully');
+  };
+
+  // Handle drag and drop events
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  // Handle preview
+  const handlePreview = () => {
+    if (previewUrl) {
+      setShowPreview(true);
+    } else if (resumeFile?.type === 'application/pdf') {
+      const url = URL.createObjectURL(resumeFile);
+      setPreviewUrl(url);
+      setShowPreview(true);
+    } else {
+      toast.error('Preview is only available for PDF files');
+    }
+  };
+
+  // Cleanup preview URL on unmount
+  React.useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     
     try {
-      // Save application to local storage
-      applicationStorage.add(data);
+      // Convert form data to API format
+      const applicationData: ApplicationFormData = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        location: data.location,
+        college: data.college,
+        specialization: data.specialization,
+        graduation_year: data.graduation_year,
+        cgpa: data.cgpa,
+        skills: data.skills,
+        experience: data.experience,
+        motivation: undefined // Optional field
+      };
+
+      // Submit application using API service
+      const result = await applicationService.submit(applicationData, resumeFile || undefined);
       
-      toast.success('Application submitted successfully!');
-      navigate('/success');
-    } catch (error) {
+      if (result.success) {
+        toast.success(result.message || 'Application submitted successfully!');
+        navigate('/success');
+      } else {
+        toast.error(result.message || 'Failed to submit application. Please try again.');
+      }
+    } catch (error: any) {
       console.error('Error submitting application:', error);
-      toast.error('Failed to submit application. Please try again.');
+      toast.error(error.message || 'Failed to submit application. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -91,7 +252,7 @@ export function ApplicationForm() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Full Name *
                   </label>
-                                    <input
+                  <input
                     {...register('name')}
                     type="text"
                     id="name"
@@ -116,6 +277,38 @@ export function ApplicationForm() {
                   />
                   {errors.email && (
                     <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Phone className="h-4 w-4 inline mr-1" />
+                    Phone Number *
+                  </label>
+                  <input
+                    {...register('phone')}
+                    type="tel"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                    placeholder="+1 (555) 123-4567"
+                  />
+                  {errors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <MapPin className="h-4 w-4 inline mr-1" />
+                    Location (City, State/Country) *
+                  </label>
+                  <input
+                    {...register('location')}
+                    type="text"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
+                    placeholder="New York, NY, USA"
+                  />
+                  {errors.location && (
+                    <p className="mt-1 text-sm text-red-600">{errors.location.message}</p>
                   )}
                 </div>
               </div>
@@ -172,10 +365,19 @@ export function ApplicationForm() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors"
                   >
                     <option value="">Select year</option>
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const years = [];
+                      // Generate years from 2013 to current year + 3 (for future graduates)
+                      for (let year = 2013; year <= currentYear + 3; year++) {
+                        years.push(
+                          <option key={year} value={year.toString()}>
+                            {year}
+                          </option>
+                        );
+                      }
+                      return years;
+                    })()}
                   </select>
                   {errors.graduation_year && (
                     <p className="mt-1 text-sm text-red-600">{errors.graduation_year.message}</p>
@@ -244,28 +446,108 @@ export function ApplicationForm() {
                   <FileText className="h-4 w-4 inline mr-1" />
                   Resume Upload (Optional)
                 </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-amber-400 transition-colors">
-                  <div className="space-y-1 text-center">
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="flex text-sm text-gray-600">
-                      <label className="relative cursor-pointer bg-white rounded-md font-medium text-amber-600 hover:text-amber-500">
-                        <span>Upload a file</span>
-                        <input
-                          type="file"
-                          className="sr-only"
-                          accept=".pdf,.doc,.docx"
-                          onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              toast.success(`Resume "${e.target.files[0].name}" uploaded successfully!`);
-                            }
-                          }}
-                        />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
+                
+                {!resumeFile ? (
+                  <div 
+                    className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-all duration-300 ${
+                      isDragging 
+                        ? 'border-amber-400 bg-amber-50 scale-105 shadow-md' 
+                        : 'border-gray-300 hover:border-amber-400 hover:bg-amber-25'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="space-y-1 text-center">
+                      <div className="relative">
+                        <Upload className={`mx-auto h-12 w-12 transition-all duration-300 ${
+                          isDragging ? 'text-amber-500 scale-110' : 'text-gray-400'
+                        }`} />
+                        {isDragging && (
+                          <div className="absolute -inset-2 bg-amber-200 rounded-full animate-ping opacity-75"></div>
+                        )}
+                      </div>
+                      <div className="flex text-sm text-gray-600">
+                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-amber-600 hover:text-amber-500 transition-colors">
+                          <span>Upload a file</span>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="sr-only"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleFileUpload(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
+                      {isDragging && (
+                        <p className="text-sm text-amber-600 font-medium animate-bounce">Drop your file here!</p>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-500">PDF, DOC, DOCX up to 10MB</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="mt-1 border-2 border-green-200 rounded-lg bg-green-50 p-4 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          {isUploading ? (
+                            <RefreshCw className="h-8 w-8 text-amber-500 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-8 w-8 text-green-500" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-green-800">
+                            {resumeFile.name}
+                          </p>
+                          <p className="text-xs text-green-600">
+                            {(resumeFile.size / 1024 / 1024).toFixed(2)} MB • 
+                            {resumeFile.type === 'application/pdf' ? 'PDF Document' : 'Word Document'}
+                          </p>
+                          {isUploading && (
+                            <div className="mt-2">
+                              <div className="w-full bg-green-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out"
+                                  style={{ width: `${uploadProgress}%` }}
+                                ></div>
+                              </div>
+                              <p className="text-xs text-green-600 mt-1">Uploading... {Math.round(uploadProgress)}%</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      {!isUploading && (
+                        <div className="flex items-center space-x-2">
+                          {resumeFile.type === 'application/pdf' && (
+                            <button
+                              type="button"
+                              onClick={handlePreview}
+                              className="inline-flex items-center px-3 py-1 border border-blue-200 rounded-md text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Preview
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleFileRemove}
+                            className="inline-flex items-center px-3 py-1 border border-red-200 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Remove
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -306,6 +588,60 @@ export function ApplicationForm() {
           </form>
         </div>
       </div>
+      
+      {/* PDF Preview Modal */}
+      {showPreview && previewUrl && (
+        <div className="fixed inset-0 z-50 overflow-y-auto animate-fadeIn">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div 
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity animate-fadeIn"
+              onClick={() => setShowPreview(false)}
+            ></div>
+            
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full sm:p-6 animate-slideInUp">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <Eye className="h-5 w-5 mr-2 text-blue-600" />
+                  Resume Preview
+                </h3>
+                <div className="flex items-center space-x-2">
+                  <a
+                    href={previewUrl}
+                    download={resumeFile?.name}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </a>
+                  <button
+                    onClick={() => setShowPreview(false)}
+                    className="inline-flex items-center p-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="w-full h-[80vh] border border-gray-200 rounded-lg overflow-hidden">
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full"
+                  title="Resume Preview"
+                >
+                  <p className="p-4 text-center text-gray-500">
+                    Your browser doesn't support PDF preview. 
+                    <a href={previewUrl} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                      Click here to open in a new tab
+                    </a>
+                  </p>
+                </iframe>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

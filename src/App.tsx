@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Toaster } from 'react-hot-toast';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './pages/HomePage';
 import { ApplicationForm } from './pages/ApplicationForm';
 import { SuccessPage } from './pages/SuccessPage';
@@ -36,7 +37,9 @@ function AppContent() {
             path="/admin/candidate/:id" 
             element={
               <ProtectedRoute>
-                <CandidateDetails />
+                <ErrorBoundary>
+                  <CandidateDetails />
+                </ErrorBoundary>
               </ProtectedRoute>
             } 
           />

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { adminAuth } from '../lib/storage';
+import { authService, type LoginCredentials } from '../lib/api';
 import toast from 'react-hot-toast';
 import { Lock, Mail, Shield } from 'lucide-react';
 
@@ -30,7 +30,12 @@ export function AdminLogin() {
     setIsLoading(true);
     
     try {
-      const success = adminAuth.login(data.email, data.password);
+      const credentials: LoginCredentials = {
+        email: data.email,
+        password: data.password
+      };
+      
+      const success = await authService.login(credentials);
       
       if (!success) {
         throw new Error('Invalid credentials');
@@ -38,9 +43,9 @@ export function AdminLogin() {
 
       toast.success('Login successful!');
       navigate('/admin/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      toast.error('Invalid credentials. Please try again.');
+      toast.error(error.message || 'Invalid credentials. Please try again.');
     } finally {
       setIsLoading(false);
     }

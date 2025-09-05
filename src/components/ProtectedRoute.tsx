@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { adminAuth } from '../lib/storage';
+import { authService } from '../lib/api';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   React.useEffect(() => {
     const checkAuth = async () => {
       try {
-        const isAuth = adminAuth.isAuthenticated();
+        const isAuth = authService.isAuthenticated();
         setAuthenticated(isAuth);
       } catch (error) {
         console.error('Auth check error:', error);

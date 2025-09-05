@@ -1,7 +1,6 @@
 import React from 'react';
-import { applicationStorage, adminAuth } from '../lib/storage';
-import { Student } from '../types';
-import { LogOut, Search, Download, Eye, Check, X, Star } from 'lucide-react';
+import { applicationService, authService, adminService, type Student } from '../lib/api';
+import { LogOut, Search, Download, Eye, Check, X, Star, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -10,46 +9,98 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const [students, setStudents] = React.useState<Student[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [specializationFilter, setSpecializationFilter] = React.useState<string>('all');
+  const [stats, setStats] = React.useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    shortlisted: 0,
+    rejected: 0
+  });
 
-  const fetchStudents = async () => {
+  const fetchStudents = async (isRefresh = false) => {
     try {
-      const applications = applicationStorage.getAll();
-      // Sort by created_at descending
-      const sortedApplications = applications.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      setStudents(sortedApplications);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
+      // Build filters for API call
+      const filters: any = {};
+      if (statusFilter !== 'all') filters.status = statusFilter;
+      if (specializationFilter !== 'all') filters.specialization = specializationFilter;
+      if (searchTerm) filters.search = searchTerm;
+      
+      const applications = await applicationService.getAll(filters);
+      setStudents(applications);
+      
+      // Calculate stats
+      const total = applications.length;
+      const pending = applications.filter(s => s.status === 'pending').length;
+      const approved = applications.filter(s => s.status === 'approved').length;
+      const shortlisted = applications.filter(s => s.status === 'shortlisted').length;
+      const rejected = applications.filter(s => s.status === 'rejected').length;
+      
+      setStats({ total, pending, approved, shortlisted, rejected });
+      
+      if (isRefresh) {
+        toast.success('Dashboard refreshed successfully!');
+      }
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load applications');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  // Handle refresh button click
+  const handleRefresh = () => {
+    fetchStudents(true);
+  };
+
+  // Debounce search to avoid too many API calls
   React.useEffect(() => {
-    fetchStudents();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      fetchStudents();
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [statusFilter, specializationFilter, searchTerm]);
 
   const handleLogout = async () => {
     try {
-      adminAuth.logout();
+      await authService.logout();
       navigate('/admin');
     } catch (error) {
       console.error('Logout error:', error);
+      toast.error('Logout failed');
     }
   };
 
   const updateStudentStatus = async (id: string, status: Student['status']) => {
     try {
-      const updatedStudent = applicationStorage.update(id, { status });
+      const success = await applicationService.updateStatus(id, status);
       
-      if (updatedStudent) {
-        setStudents(prev => prev.map(s => s.id === id ? updatedStudent : s));
+      if (success) {
+        setStudents(prev => prev.map(s => s.id === id ? { ...s, status } : s));
         toast.success(`Application ${status} successfully`);
+        
+        // Update stats
+        const updatedApplications = students.map(s => s.id === id ? { ...s, status } : s);
+        const total = updatedApplications.length;
+        const pending = updatedApplications.filter(s => s.status === 'pending').length;
+        const approved = updatedApplications.filter(s => s.status === 'approved').length;
+        const shortlisted = updatedApplications.filter(s => s.status === 'shortlisted').length;
+        const rejected = updatedApplications.filter(s => s.status === 'rejected').length;
+        setStats({ total, pending, approved, shortlisted, rejected });
+      } else {
+        toast.error('Failed to update application status');
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -61,40 +112,30 @@ export function AdminDashboard() {
     navigate(`/admin/candidate/${student.id}`);
   };
 
-  const exportData = () => {
-    const csvContent = "data:text/csv;charset=utf-8,"
-      + "Name,Email,College,Specialization,Status,Applied Date\n"
-      + students.map(s => 
-          `${s.name},${s.email},${s.college},${s.specialization},${s.status},${format(new Date(s.created_at), 'yyyy-MM-dd')}`
-        ).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "mba_applications.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Data exported successfully');
+  const exportData = async () => {
+    try {
+      const csvContent = "data:text/csv;charset=utf-8,"
+        + "Name,Email,College,Specialization,Status,Applied Date\n"
+        + students.map(s => 
+            `${s.name},${s.email},${s.college},${s.specialization},${s.status},${format(new Date(s.created_at), 'yyyy-MM-dd')}`
+          ).join("\n");
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "mba_applications.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Data exported successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export data');
+    }
   };
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.college.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
-    const matchesSpecialization = specializationFilter === 'all' || student.specialization === specializationFilter;
-    
-    return matchesSearch && matchesStatus && matchesSpecialization;
-  });
-
-  const statusCounts = {
-    total: students.length,
-    pending: students.filter(s => s.status === 'pending').length,
-    approved: students.filter(s => s.status === 'approved').length,
-    shortlisted: students.filter(s => s.status === 'shortlisted').length,
-    rejected: students.filter(s => s.status === 'rejected').length,
-  };
+  // Use students directly since filtering is now done on the backend
+  const filteredStudents = students;
 
   if (loading) {
     return (
@@ -129,23 +170,23 @@ export function AdminDashboard() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg shadow-lg p-6">
-            <div className="text-3xl font-bold text-amber-600">{statusCounts.total}</div>
+            <div className="text-3xl font-bold text-amber-600">{stats.total}</div>
             <div className="text-gray-700">Total Applications</div>
           </div>
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg shadow-lg p-6">
-            <div className="text-3xl font-bold text-yellow-600">{statusCounts.pending}</div>
+            <div className="text-3xl font-bold text-yellow-600">{stats.pending}</div>
             <div className="text-gray-700">Pending Review</div>
           </div>
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg shadow-lg p-6">
-            <div className="text-3xl font-bold text-orange-600">{statusCounts.shortlisted}</div>
+            <div className="text-3xl font-bold text-orange-600">{stats.shortlisted}</div>
             <div className="text-gray-700">Shortlisted</div>
           </div>
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg shadow-lg p-6">
-            <div className="text-3xl font-bold text-green-600">{statusCounts.approved}</div>
+            <div className="text-3xl font-bold text-green-600">{stats.approved}</div>
             <div className="text-gray-700">Approved</div>
           </div>
           <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-lg shadow-lg p-6">
-            <div className="text-3xl font-bold text-red-600">{statusCounts.rejected}</div>
+            <div className="text-3xl font-bold text-red-600">{stats.rejected}</div>
             <div className="text-gray-700">Rejected</div>
           </div>
         </div>
@@ -189,13 +230,32 @@ export function AdminDashboard() {
               <option value="Strategy & Consulting">Strategy & Consulting</option>
             </select>
 
-            <button
-              onClick={exportData}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center"
-            >
-              <Download className="h-5 w-5 mr-2" />
-              Export
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 flex items-center ${
+                  refreshing 
+                    ? 'bg-gray-400 cursor-not-allowed text-white' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md'
+                }`}
+                title="Refresh dashboard data"
+              >
+                <RefreshCw className={`h-5 w-5 mr-2 ${
+                  refreshing ? 'animate-spin' : ''
+                }`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+              
+              <button
+                onClick={exportData}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center"
+                title="Export applications to CSV"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Export
+              </button>
+            </div>
           </div>
         </div>
 
