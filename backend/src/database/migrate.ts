@@ -36,13 +36,18 @@ const createTables = async () => {
         motivation TEXT,
         resume_url VARCHAR(500),
         ai_prediction VARCHAR(255),
+        ai_score INT DEFAULT NULL,
+        ai_strengths TEXT DEFAULT NULL,
+        ai_weaknesses TEXT DEFAULT NULL,
+        ai_analysis_status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
         status ENUM('pending', 'approved', 'rejected', 'shortlisted') DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_email (email),
         INDEX idx_status (status),
         INDEX idx_specialization (specialization),
-        INDEX idx_created_at (created_at)
+        INDEX idx_created_at (created_at),
+        INDEX idx_ai_score (ai_score)
       )
     `;
 

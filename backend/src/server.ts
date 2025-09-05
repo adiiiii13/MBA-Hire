@@ -20,6 +20,9 @@ import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
 import { testConnection } from './config/database';
 
+// Import AI services (this starts the background queue)
+import './services/aiAnalysisQueue';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

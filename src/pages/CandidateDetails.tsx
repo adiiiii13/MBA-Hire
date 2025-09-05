@@ -361,6 +361,171 @@ export function CandidateDetails() {
               </div>
             </div>
 
+            {/* AI Analysis */}
+            <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl shadow-lg p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                🤖 AI Analysis
+                <div className={`ml-3 w-3 h-3 rounded-full ${
+                  student.ai_analysis_status === 'completed' ? 'bg-green-500' :
+                  student.ai_analysis_status === 'processing' ? 'bg-yellow-500 animate-pulse' :
+                  student.ai_analysis_status === 'failed' ? 'bg-red-500' :
+                  'bg-gray-400'
+                }`} title={`Analysis ${student.ai_analysis_status || 'pending'}`}></div>
+                <div className="ml-2 text-sm text-gray-500">
+                  ({student.ai_analysis_status === 'completed' ? 'Complete' :
+                   student.ai_analysis_status === 'processing' ? 'Processing...' :
+                   student.ai_analysis_status === 'failed' ? 'Failed' : 'Pending'})
+                </div>
+              </h3>
+              
+              {student.ai_score !== null && student.ai_score !== undefined ? (
+                <div className="space-y-4">
+                  {/* Resume Quality Warning */}
+                  {student.ai_analysis_status === 'completed' && student.ai_score < 30 && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <span className="text-orange-500 mr-2 text-lg">⚠️</span>
+                        <div>
+                          <h4 className="font-semibold text-orange-800 mb-1">Resume Quality Issues Detected</h4>
+                          <p className="text-orange-700 text-sm">
+                            The uploaded resume may have text extraction issues or content mismatches. 
+                            Manual review is recommended for accurate assessment.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* AI Score */}
+                  <div className="bg-white rounded-lg p-4 border border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">
+                        AI Prediction Score
+                        {student.ai_analysis_status === 'completed' && student.ai_score < 30 && (
+                          <span className="ml-2 text-xs text-orange-600">(Fallback Analysis)</span>
+                        )}
+                      </span>
+                      <span className={`text-2xl font-bold ${
+                        student.ai_score >= 80 ? 'text-green-600' :
+                        student.ai_score >= 60 ? 'text-orange-600' :
+                        'text-red-600'
+                      }`}>
+                        {student.ai_score}/100
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-500 ${
+                          student.ai_score >= 80 ? 'bg-green-500' :
+                          student.ai_score >= 60 ? 'bg-orange-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${student.ai_score}%` }}
+                      ></div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      {student.ai_score >= 80 ? 'Excellent candidate' :
+                       student.ai_score >= 60 ? 'Good candidate' :
+                       student.ai_score < 30 ? 'Manual review required' :
+                       'Needs improvement'}
+                    </div>
+                  </div>
+
+                  {/* AI Prediction */}
+                  {student.ai_prediction && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-2">Predicted Best-Fit Role</h4>
+                      <p className="text-blue-800">{student.ai_prediction}</p>
+                    </div>
+                  )}
+
+                  {/* Strengths */}
+                  {student.ai_strengths && student.ai_strengths.length > 0 && (
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+                        <span className="text-green-600 mr-2">✓</span>
+                        Key Strengths
+                      </h4>
+                      <ul className="space-y-2">
+                        {student.ai_strengths.map((strength: string, index: number) => (
+                          <li key={index} className="text-green-800 text-sm flex items-start">
+                            <span className="text-green-600 mr-2 mt-1 text-xs">•</span>
+                            {strength}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Weaknesses */}
+                  {student.ai_weaknesses && student.ai_weaknesses.length > 0 && (
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <h4 className="font-semibold text-red-900 mb-3 flex items-center">
+                        <span className="text-red-600 mr-2">!</span>
+                        Areas for Improvement
+                      </h4>
+                      <ul className="space-y-2">
+                        {student.ai_weaknesses.map((weakness: string, index: number) => (
+                          <li key={index} className="text-red-800 text-sm flex items-start">
+                            <span className="text-red-600 mr-2 mt-1 text-xs">•</span>
+                            {weakness}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {!student.resume_url ? (
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
+                      <div className="flex items-center justify-center mb-2">
+                        <span className="text-gray-500 mr-2 text-lg">📝</span>
+                        <span className="text-gray-700 font-medium">No Resume Uploaded</span>
+                      </div>
+                      <p className="text-gray-600 text-sm">
+                        AI analysis requires a resume to be uploaded. The candidate did not provide a resume with their application.
+                      </p>
+                    </div>
+                  ) : student.ai_analysis_status === 'failed' ? (
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200 text-center">
+                      <div className="flex items-center justify-center mb-2">
+                        <span className="text-red-500 mr-2 text-lg">❌</span>
+                        <span className="text-red-700 font-medium">AI Analysis Failed</span>
+                      </div>
+                      <p className="text-red-600 text-sm">
+                        The AI analysis could not be completed. This may be due to resume format issues or API connectivity problems.
+                      </p>
+                      <p className="text-red-500 text-xs mt-2">
+                        Manual review is recommended for this candidate.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200 text-center">
+                      <div className="flex items-center justify-center mb-2">
+                        {student.ai_analysis_status === 'processing' ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-600 mr-3"></div>
+                        ) : (
+                          <span className="text-yellow-500 mr-2 text-lg">⏳</span>
+                        )}
+                        <span className="text-yellow-800 font-medium">
+                          {student.ai_analysis_status === 'processing' ? 'AI Analysis in Progress' : 'AI Analysis Pending'}
+                        </span>
+                      </div>
+                      <p className="text-yellow-700 text-sm">
+                        {student.ai_analysis_status === 'processing' 
+                          ? 'Our AI is analyzing the candidate\'s profile. Results will appear here once complete.'
+                          : 'The candidate\'s resume is queued for AI analysis. Processing will begin shortly.'}
+                      </p>
+                      <p className="text-yellow-600 text-xs mt-2">
+                        Status: {student.ai_analysis_status || 'pending'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Resume Actions */}
             <div className="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl shadow-lg p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Resume</h3>

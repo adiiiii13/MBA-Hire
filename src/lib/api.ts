@@ -45,6 +45,10 @@ interface Student {
   motivation?: string;
   resume_url?: string;
   ai_prediction?: string;
+  ai_score?: number; // AI prediction score (1-100)
+  ai_strengths?: string[]; // Array of candidate strengths
+  ai_weaknesses?: string[]; // Array of areas for improvement
+  ai_analysis_status?: 'pending' | 'processing' | 'completed' | 'failed'; // AI analysis status
   status: 'pending' | 'approved' | 'rejected' | 'shortlisted';
   created_at: string;
   updated_at: string;
@@ -494,6 +498,18 @@ export const applicationService = {
       motivation: rawData.motivation || undefined,
       resume_url: rawData.resume_url || undefined,
       ai_prediction: rawData.ai_prediction || undefined,
+      ai_score: typeof rawData.ai_score === 'number' ? rawData.ai_score : undefined,
+      ai_strengths: Array.isArray(rawData.ai_strengths) 
+        ? rawData.ai_strengths 
+        : rawData.ai_strengths && typeof rawData.ai_strengths === 'string'
+        ? JSON.parse(rawData.ai_strengths)
+        : undefined,
+      ai_weaknesses: Array.isArray(rawData.ai_weaknesses)
+        ? rawData.ai_weaknesses
+        : rawData.ai_weaknesses && typeof rawData.ai_weaknesses === 'string'
+        ? JSON.parse(rawData.ai_weaknesses)
+        : undefined,
+      ai_analysis_status: rawData.ai_analysis_status || undefined,
       status: rawData.status || 'pending',
       created_at: rawData.created_at || new Date().toISOString(),
       updated_at: rawData.updated_at || new Date().toISOString(),

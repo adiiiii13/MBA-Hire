@@ -21,6 +21,7 @@ import {
   getFileInfo, 
   deleteFile 
 } from '../middleware/upload';
+import { queueResumeAnalysis } from '../services/aiAnalysisQueue';
 
 const router = express.Router();
 
@@ -105,6 +106,24 @@ router.post('/',
           fileInfo.mimetype,
           fileInfo.size
         ]);
+
+        // Queue AI analysis for the uploaded resume
+        try {
+          const candidateInfo = {
+            name: application.name,
+            specialization: application.specialization,
+            college: application.college,
+            cgpa: application.cgpa,
+            skills: skills,
+            experience: application.experience
+          };
+          
+          await queueResumeAnalysis(applicationId, application.resume_url!, candidateInfo);
+          console.log(`Queued AI analysis for application: ${applicationId}`);
+        } catch (aiError) {
+          console.error('Failed to queue AI analysis:', aiError);
+          // Don't fail the application submission if AI queuing fails
+        }
       }
 
       // Return created application (without sensitive data)
@@ -184,7 +203,8 @@ router.get('/', validateQuery(queryFiltersSchema), async (req, res, next) => {
       SELECT 
         id, name, email, phone, location, college, specialization,
         graduation_year, cgpa, skills, experience, motivation,
-        resume_url, ai_prediction, status, created_at, updated_at
+        resume_url, ai_prediction, ai_score, ai_strengths, ai_weaknesses, ai_analysis_status,
+        status, created_at, updated_at
       FROM applications 
       ${whereClause}
       ${orderClause}
@@ -194,10 +214,12 @@ router.get('/', validateQuery(queryFiltersSchema), async (req, res, next) => {
     queryParams.push(limit, offset);
     const [applications] = await pool.execute(applicationsQuery, queryParams);
 
-    // Process applications (parse skills JSON)
+    // Process applications (parse skills and AI data JSON)
     const processedApplications = (applications as ApplicationData[]).map(app => ({
       ...app,
-      skills: app.skills ? JSON.parse(app.skills as string) : []
+      skills: app.skills ? JSON.parse(app.skills as string) : [],
+      ai_strengths: app.ai_strengths ? JSON.parse(app.ai_strengths as string) : [],
+      ai_weaknesses: app.ai_weaknesses ? JSON.parse(app.ai_weaknesses as string) : []
     }));
 
     const totalPages = Math.ceil(total / limit);
@@ -229,7 +251,8 @@ router.get('/:id', validateParams(idParamSchema), async (req, res, next) => {
       SELECT 
         id, name, email, phone, location, college, specialization,
         graduation_year, cgpa, skills, experience, motivation,
-        resume_url, ai_prediction, status, created_at, updated_at
+        resume_url, ai_prediction, ai_score, ai_strengths, ai_weaknesses, ai_analysis_status,
+        status, created_at, updated_at
       FROM applications 
       WHERE id = ?
     `;
@@ -248,8 +271,10 @@ router.get('/:id', validateParams(idParamSchema), async (req, res, next) => {
 
     const application = applicationsArray[0];
     
-    // Parse skills JSON
+    // Parse JSON fields
     application.skills = application.skills ? JSON.parse(application.skills as string) : [];
+    application.ai_strengths = application.ai_strengths ? JSON.parse(application.ai_strengths as string) : [];
+    application.ai_weaknesses = application.ai_weaknesses ? JSON.parse(application.ai_weaknesses as string) : [];
 
     // Get file info if exists
     let fileInfo = null;

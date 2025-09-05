@@ -275,6 +275,9 @@ export function AdminDashboard() {
                     CGPA
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                    AI Score
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
@@ -305,6 +308,32 @@ export function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{student.cgpa || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {student.ai_score ? (
+                          <div className="flex items-center">
+                            <div className={`text-sm font-semibold ${
+                              student.ai_score >= 80 ? 'text-green-600' :
+                              student.ai_score >= 60 ? 'text-orange-600' :
+                              'text-red-600'
+                            }`}>
+                              {student.ai_score}/100
+                            </div>
+                            <div className={`ml-2 w-2 h-2 rounded-full ${
+                              student.ai_analysis_status === 'completed' ? 'bg-green-500' :
+                              student.ai_analysis_status === 'processing' ? 'bg-yellow-500 animate-pulse' :
+                              student.ai_analysis_status === 'failed' ? 'bg-red-500' :
+                              'bg-gray-400'
+                            }`} title={`Analysis ${student.ai_analysis_status || 'pending'}`}></div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center text-sm text-gray-500">
+                            <span>Analyzing...</span>
+                            <div className="ml-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

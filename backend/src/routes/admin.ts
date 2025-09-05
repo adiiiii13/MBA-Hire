@@ -109,7 +109,8 @@ router.get('/export', async (req, res, next) => {
       SELECT 
         id, name, email, phone, college, specialization,
         graduation_year, cgpa, skills, experience, motivation,
-        ai_prediction, status, created_at
+        ai_prediction, ai_score, ai_strengths, ai_weaknesses, ai_analysis_status,
+        status, created_at
       FROM applications
       ORDER BY created_at DESC
     `;
@@ -125,7 +126,7 @@ router.get('/export', async (req, res, next) => {
       const headers = [
         'ID', 'Name', 'Email', 'Phone', 'College', 'Specialization',
         'Graduation Year', 'CGPA', 'Skills', 'Experience', 'Motivation',
-        'AI Prediction', 'Status', 'Created At'
+        'AI Prediction', 'AI Score', 'AI Analysis Status', 'Status', 'Created At'
       ];
 
       const csvRows = [
@@ -143,6 +144,8 @@ router.get('/export', async (req, res, next) => {
           `"${(app.experience || '').replace(/"/g, '""')}"`,
           `"${(app.motivation || '').replace(/"/g, '""')}"`,
           `"${app.ai_prediction || ''}"`,
+          app.ai_score || '',
+          app.ai_analysis_status || 'pending',
           app.status,
           app.created_at
         ].join(','))
