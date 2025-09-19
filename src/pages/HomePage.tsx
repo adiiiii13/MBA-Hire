@@ -384,53 +384,66 @@ export function HomePage() {
           {/* Internships Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {filteredInternships.map((internship) => (
-              <div key={internship.id} className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden border border-amber-200">
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="bg-amber-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+              <div key={internship.id} className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden border border-amber-200 group">
+                <div className="p-6 relative">
+                  {/* Subtle glow effect on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-orange-200 opacity-0 group-hover:opacity-20 transition-opacity duration-300 rounded-2xl"></div>
+                  
+                  <div className="flex justify-between items-start mb-4 relative z-10">
+                    <span className="bg-amber-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-md">
                       {internship.specialization}
                     </span>
-                    <span className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                    <span className="bg-emerald-600 text-white px-3 py-1 rounded-full text-sm font-medium shadow-md flex items-center">
+                      <Briefcase className="h-3 w-3 mr-1" />
                       {internship.type}
                     </span>
                   </div>
 
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">{internship.title}</h4>
+                  <h4 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-amber-700 transition-colors duration-300 relative z-10">{internship.title}</h4>
                   
-                  <div className="flex items-center text-gray-700 mb-2">
-                    <Building className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">{internship.company}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-gray-700 mb-2">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">{internship.location}</span>
+                  <div className="space-y-2 mb-4 relative z-10">
+                    <div className="flex items-center text-gray-700">
+                      <Building className="h-4 w-4 mr-2 text-amber-600" />
+                      <span className="text-sm font-medium">{internship.company}</span>
+                    </div>
+                    
+                    <div className="flex items-center text-gray-700">
+                      <MapPin className="h-4 w-4 mr-2 text-amber-600" />
+                      <span className="text-sm font-medium">{internship.location}</span>
+                    </div>
+
+                    <div className="flex items-center text-gray-700">
+                      <Clock className="h-4 w-4 mr-2 text-amber-600" />
+                      <span className="text-sm font-medium">{internship.duration}</span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center text-gray-700 mb-4">
-                    <Clock className="h-4 w-4 mr-2" />
-                    <span className="text-sm font-medium">{internship.duration}</span>
-                  </div>
+                  <p className="text-gray-700 mb-4 text-sm leading-relaxed relative z-10">{internship.description}</p>
 
-                  <p className="text-gray-700 mb-4 text-sm leading-relaxed">{internship.description}</p>
-
-                  <div className="mb-4">
-                    <h5 className="font-semibold text-gray-900 mb-2">Requirements:</h5>
+                  <div className="mb-4 relative z-10">
+                    <h5 className="font-semibold text-gray-900 mb-2 flex items-center">
+                      <Award className="h-4 w-4 mr-1 text-amber-600" />
+                      Requirements:
+                    </h5>
                     <ul className="text-sm text-gray-700 space-y-1">
                       {internship.requirements.slice(0, 2).map((req, index) => (
                         <li key={index} className="flex items-center">
-                          <div className="w-1.5 h-1.5 bg-amber-600 rounded-full mr-2"></div>
+                          <div className="w-1.5 h-1.5 bg-amber-600 rounded-full mr-2 flex-shrink-0"></div>
                           {req}
                         </li>
                       ))}
                     </ul>
                   </div>
 
-                  <div className="pt-4 border-t border-amber-200">
-                    <button className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
+                  <div className="pt-4 border-t border-amber-200 relative z-10">
+                    <Link
+                      to="/apply"
+                      state={{ internship: internship }}
+                      className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-medium text-sm py-3 px-4 rounded-lg flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg"
+                    >
                       Apply Now
-                      <ArrowRight className="h-4 w-4 ml-1" />
-                    </button>
+                      <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+                    </Link>
                   </div>
                 </div>
               </div>

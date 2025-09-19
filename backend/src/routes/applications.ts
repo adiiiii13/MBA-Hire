@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../config/database';
 import { 
@@ -30,7 +30,7 @@ router.post('/',
   uploadSingle,
   handleUploadError,
   validate(applicationSchema), 
-  async (req, res, next) => {
+  async (req: any, res: Response, next: NextFunction) => {
     try {
       const applicationData = req.body;
       const file = req.file;
@@ -58,7 +58,7 @@ router.post('/',
         skills: JSON.stringify(skills),
         experience: applicationData.experience,
         motivation: applicationData.motivation || null,
-        resume_url: file ? `/uploads/${file.filename}` : null,
+        resume_url: file ? `/uploads/${file.filename}` : undefined,
         status: 'pending'
       };
 

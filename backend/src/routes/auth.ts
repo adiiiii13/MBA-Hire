@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { pool } from '../config/database';
 import { validate } from '../validation/schemas';
 import { loginSchema } from '../validation/schemas';
@@ -55,9 +55,11 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       role: admin.role
     };
 
-    const token = jwt.sign(payload, jwtSecret, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-    });
+    const token = jwt.sign(
+      payload, 
+      jwtSecret, 
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as SignOptions
+    );
 
     // Remove password from response
     const { password: _, ...adminWithoutPassword } = admin;
@@ -135,9 +137,11 @@ router.post('/refresh', authenticateToken, async (req: any, res, next) => {
       role: req.user.role
     };
 
-    const token = jwt.sign(payload, jwtSecret, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-    });
+    const token = jwt.sign(
+      payload, 
+      jwtSecret, 
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' } as SignOptions
+    );
 
     const response: ApiResponse = {
       success: true,

@@ -13,6 +13,8 @@ export interface ApplicationData {
   motivation?: string;
   resume_url?: string;
   ai_prediction?: string;
+  ai_strengths?: string;
+  ai_weaknesses?: string;
   status: 'pending' | 'approved' | 'rejected' | 'shortlisted';
   created_at?: string;
   updated_at?: string;
@@ -85,8 +87,10 @@ export interface UploadedFile {
   path: string;
 }
 
+import { Request } from 'express';
+
 // Request types with user authentication
-export interface AuthenticatedRequest extends Express.Request {
+export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
     email: string;

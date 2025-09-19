@@ -125,9 +125,13 @@ async function reprocessResumes() {
         }
         
       } catch (error) {
-        console.log(`   💥 Error processing: ${error instanceof Error ? error.message : 'Unknown error'}`);\n        
+        console.log(`   💥 Error processing: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        
         // Update status to failed
-        await connection.execute(\n          'UPDATE applications SET ai_analysis_status = ? WHERE id = ?',\n          ['failed', app.id]\n        );
+        await connection.execute(
+          'UPDATE applications SET ai_analysis_status = ? WHERE id = ?',
+          ['failed', app.id]
+        );
       }
       
       console.log(''); // Empty line for readability

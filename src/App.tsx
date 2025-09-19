@@ -9,12 +9,16 @@ import { SuccessPage } from './pages/SuccessPage';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { CandidateDetails } from './pages/CandidateDetails';
+import { MockTestPage } from './pages/MockTestPage';
+import { ExamInterface } from './pages/ExamInterface';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function AppContent() {
   const location = useLocation();
-  // Hide header only for admin dashboard and candidate details, but show for admin login
-  const hideHeaderAndFooter = location.pathname === '/admin/dashboard' || location.pathname.startsWith('/admin/candidate');
+  // Hide header only for admin dashboard, candidate details, and exam interface
+  const hideHeaderAndFooter = location.pathname === '/admin/dashboard' || 
+                               location.pathname.startsWith('/admin/candidate') ||
+                               location.pathname.startsWith('/exam');
 
   return (
     <div className="min-h-screen bg-white">
@@ -24,6 +28,8 @@ function AppContent() {
           <Route path="/" element={<HomePage />} />
           <Route path="/apply" element={<ApplicationForm />} />
           <Route path="/success" element={<SuccessPage />} />
+          <Route path="/mock-test" element={<MockTestPage />} />
+          <Route path="/exam/:testId" element={<ExamInterface />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route 
             path="/admin/dashboard" 
